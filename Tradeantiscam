@@ -1,0 +1,21 @@
+-- TradeHandler.server.lua
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local TradeEvent = Instance.new("RemoteEvent")
+TradeEvent.Name = "TradeEvent"
+TradeEvent.Parent = ReplicatedStorage
+
+local function onTradeEvent(player, tradeId, itemId)
+    local trade = game:GetService("MarketplaceService"):GetPlayerOwnedAsset(player.UserId, tradeId)
+    if trade then
+        local item = game:GetService("MarketplaceService"):GetProductInfo(itemId)
+        if item then
+            -- Close the trade if the specific item is placed
+            game:GetService("MarketplaceService"):CloseTrade(tradeId)
+        end
+    end
+end
+
+TradeEvent.OnServerEvent:Connect(onTradeEvent)

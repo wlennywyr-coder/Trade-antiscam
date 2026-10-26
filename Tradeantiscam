@@ -1,36 +1,12 @@
--- CombinedTradeScript.server.lua
+-- TradeInterface.client.lua
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Create the TradeEvent
-local TradeEvent = Instance.new("RemoteEvent")
-TradeEvent.Name = "TradeEvent"
-TradeEvent.Parent = ReplicatedStorage
+local player = Players.LocalPlayer
+local TradeEvent = ReplicatedStorage:WaitForChild("TradeEvent")
 
--- List of scam items
-local scamItems = {
-    ["item123"] = true,
-    ["item456"] = true,
-    ["item789"] = true
-}
-
--- Function to handle trade events
-local function onTradeEvent(player, tradeId, itemId)
-    if scamItems[itemId] then
-        -- Close the trade if the item is a scam item
-        print("Scam item detected. Closing trade.")
-        -- Add logic to close the trade here
-    else
-        print("Trade accepted.")
-        -- Add logic to proceed with the trade here
-    end
-end
-
-TradeEvent.OnServerEvent:Connect(onTradeEvent)
-
--- Function to create the trade interface for a player
-local function createTradeInterface(player)
+local function createTradeInterface()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "TradeInterface"
     screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -66,127 +42,26 @@ local function createTradeInterface(player)
     end)
 end
 
--- Function to handle player added
-local function onPlayerAdded(player)
-    createTradeInterface(player)
+createTradeInterface()
+
+-- TradeHandler.server.lua
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local TradeEvent = Instance.new("RemoteEvent")
+TradeEvent.Name = "TradeEvent"
+TradeEvent.Parent = ReplicatedStorage
+
+local function onTradeEvent(player, tradeId, itemId)
+    local trade = game:GetService("MarketplaceService"):GetPlayerOwnedAsset(player.UserId, tradeId)
+    if trade then
+        local item = game:GetService("MarketplaceService"):GetProductInfo(itemId)
+        if item then
+            -- Close the trade if the specific item is placed
+            game:GetService("MarketplaceService"):CloseTrade(tradeId)
+        end
+    end
 end
 
-Players.PlayerAdded:Connect(onPlayerAdded)
-
--- Function to handle player disconnections
-local function onPlayerDisconnected(player)
-    print(player.Name .. " has disconnected.")
-    -- Add logic to handle player disconnection here
-end
-
-Players.PlayerRemoving:Connect(onPlayerDisconnected)
-
--- Function to handle player deaths
-local function onPlayerDeath(player)
-    print(player.Name .. " has died.")
-    -- Add logic to handle player death here
-end
-
--- Assuming there is a way to detect player deaths, you would connect it here. For example, if you have a death event:
--- local DeathEvent = game:GetService("ReplicatedStorage"):WaitForChild("DeathEvent")
--- DeathEvent.OnServerEvent:Connect(onPlayerDeath)
-
--- Function to handle player roles
-local function onPlayerRoleChanged(player, role)
-    print(player.Name .. " role changed to " .. role)
-    -- Add logic to handle player role changes here
-end
-
--- Assuming there is a way to detect role changes, you would connect it here. For example, if you have a role change event:
--- local RoleChangeEvent = game:GetService("ReplicatedStorage"):WaitForChild("RoleChangeEvent")
--- RoleChangeEvent.OnServerEvent:Connect(onPlayerRoleChanged)
-
--- Function to handle voting
-local function onVote(player, vote)
-    print(player.Name .. " voted " .. vote)
-    -- Add logic to handle voting here
-end
-
--- Assuming there is a way to detect votes, you would connect it here. For example, if you have a vote event:
--- local VoteEvent = game:GetService("ReplicatedStorage"):WaitForChild("VoteEvent")
--- VoteEvent.OnServerEvent:Connect(onVote)
-
--- Function to handle player interactions
-local function onPlayerInteraction(player, interaction)
-    print(player.Name .. " interacted with " .. interaction)
-    -- Add logic to handle player interactions here
-end
-
--- Assuming there is a way to detect player interactions, you would connect it here. For example, if you have an interaction event:
--- local InteractionEvent = game:GetService("ReplicatedStorage"):WaitForChild("InteractionEvent")
--- InteractionEvent.OnServerEvent:Connect(onPlayerInteraction)
-
--- Function to handle player messages
-local function onPlayerMessage(player, message)
-    print(player.Name .. " said: " .. message)
-    -- Add logic to handle player messages here
-end
-
--- Assuming there is a way to detect player messages, you would connect it here. For example, if you have a message event:
--- local MessageEvent = game:GetService("ReplicatedStorage"):WaitForChild("MessageEvent")
--- MessageEvent.OnServerEvent:Connect(onPlayerMessage)
-
--- Function to handle player commands
-local function onPlayerCommand(player, command)
-    print(player.Name .. " issued command: " .. command)
-    -- Add logic to handle player commands here
-end
-
--- Assuming there is a way to detect player commands, you would connect it here. For example, if you have a command event:
--- local CommandEvent = game:GetService("ReplicatedStorage"):WaitForChild("CommandEvent")
--- CommandEvent.OnServerEvent:Connect(onPlayerCommand)
-
--- Function to handle player achievements
-local function onPlayerAchievement(player, achievement)
-    print(player.Name .. " achieved: " .. achievement)
-    -- Add logic to handle player achievements here
-end
-
--- Assuming there is a way to detect player achievements, you would connect it here. For example, if you have an achievement event:
--- local AchievementEvent = game:GetService("ReplicatedStorage"):WaitForChild("AchievementEvent")
--- AchievementEvent.OnServerEvent:Connect(onPlayerAchievement)
-
--- Function to handle player levels
-local function onPlayerLevel(player, level)
-    print(player.Name .. " reached level: " .. level)
-    -- Add logic to handle player levels here
-end
-
--- Assuming there is a way to detect player levels, you would connect it here. For example, if you have a level event:
--- local LevelEvent = game:GetService("ReplicatedStorage"):WaitForChild("LevelEvent")
--- LevelEvent.OnServerEvent:Connect(onPlayerLevel)
-
--- Function to handle player quests
-local function onPlayerQuest(player, quest)
-    print(player.Name .. " started quest: " .. quest)
-    -- Add logic to handle player quests here
-end
-
--- Assuming there is a way to detect player quests, you would connect it here. For example, if you have a quest event:
--- local QuestEvent = game:GetService("ReplicatedStorage"):WaitForChild("QuestEvent")
--- QuestEvent.OnServerEvent:Connect(onPlayerQuest)
-
--- Function to handle player inventory
-local function onPlayerInventory(player, inventory)
-    print(player.Name .. " inventory updated: " .. inventory)
-    -- Add logic to handle player inventory here
-end
-
--- Assuming there is a way to detect player inventory changes, you would connect it here. For example, if you have an inventory event:
--- local InventoryEvent = game:GetService("ReplicatedStorage"):WaitForChild("InventoryEvent")
--- InventoryEvent.OnServerEvent:Connect(onPlayerInventory)
-
--- Function to handle player stats
-local function onPlayerStats(player, stats)
-    print(player.Name .. " stats updated: " .. stats)
-    -- Add logic to handle player stats here
-end
-
--- Assuming there is a way to detect player stats changes, you would connect it here. For example, if you have a stats event:
--- local StatsEvent = game:GetService("ReplicatedStorage"):WaitForChild("StatsEvent")
--- StatsEvent.OnServerEvent:Connect(onPlayerStats)
+TradeEvent.OnServerEvent:Connect(onTradeEvent)

@@ -1,56 +1,202 @@
--- TradeHandler.server.lua
--- ANTISCAM MADE BY HARMONY
--- Script (pas LocalScript) à placer dans ServerScriptService
+-- ANTISCAM MADE BY HARMONY (tout-en-un, côté client)
+-- Un seul script : interface "ON" + blocage des trades entrants
 
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local GREEN = Color3.fromRGB(45, 255, 138)
+local RED = Color3.fromRGB(255, 80, 80)
 
 ----------------------------------------------------------------
--- CONFIG : IDs des items qui font fermer le trade
+-- INTERFACE
 ----------------------------------------------------------------
-local BLOCKED_ITEMS = {
-	[123456789] = true, -- remplace par tes IDs
-}
+local guiParent = (gethui and gethui()) or playerGui
 
-----------------------------------------------------------------
--- Events
-----------------------------------------------------------------
--- Serveur -> client : prévient les joueurs (affiché dans l'interface)
-local AlertEvent = Instance.new("RemoteEvent")
-AlertEvent.Name = "AntiScamAlert"
-AlertEvent.Parent = ReplicatedStorage
+local old = guiParent:FindFirstChild("AntiScamHarmony")
+if old then old:Destroy() end
 
--- Ton système de trade -> ce script : "un item vient d'être placé"
--- Usage : ServerStorage.AntiScamItemPlaced:Fire(tradeId, itemId, {joueur1, joueur2})
-local ItemPlaced = Instance.new("BindableEvent")
-ItemPlaced.Name = "AntiScamItemPlaced"
-ItemPlaced.Parent = ServerStorage
+local gui = Instance.new("ScreenGui")
+gui.Name = "AntiScamHarmony"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = guiParent
 
--- Ce script -> ton système de trade : "ferme ce trade"
--- Connecte-toi dessus : ServerStorage.AntiScamCloseTrade.Event:Connect(function(tradeId) ... end)
-local CloseTrade = Instance.new("BindableEvent")
-CloseTrade.Name = "AntiScamCloseTrade"
-CloseTrade.Parent = ServerStorage
+local card = Instance.new("Frame")
+card.Size = UDim2.fromOffset(300, 230)
+card.Position = UDim2.new(0.5, -150, 0.5, -115)
+card.BackgroundColor3 = Color3.fromRGB(12, 18, 24)
+card.BorderSizePixel = 0
+card.Active = true
+card.Parent = gui
+Instance.new("UICorner", card).CornerRadius = UDim.new(0, 16)
 
-----------------------------------------------------------------
--- Logique
-----------------------------------------------------------------
-ItemPlaced.Event:Connect(function(tradeId, itemId, participants)
-	if typeof(itemId) ~= "number" or type(participants) ~= "table" then
-		return
-	end
+local stroke = Instance.new("UIStroke")
+stroke.Color = GREEN
+stroke.Thickness = 1.5
+stroke.Transparency = 0.4
+stroke.Parent = card
 
-	if BLOCKED_ITEMS[itemId] then
-		CloseTrade:Fire(tradeId)
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 44)
+title.Position = UDim2.fromOffset(0, 22)
+title.BackgroundTransparency = 1
+title.Text = "🛡 ANTISCAM"
+title.TextColor3 = Color3.fromRGB(232, 255, 243)
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 28
+title.Parent = card
 
-		for _, plr in ipairs(participants) do
-			if typeof(plr) == "Instance" and plr:IsA("Player") then
-				AlertEvent:FireClient(plr, itemId)
+local by = Instance.new("TextLabel")
+by.Size = UDim2.new(1, 0, 0, 20)
+by.Position = UDim2.fromOffset(0, 66)
+by.BackgroundTransparency = 1
+by.Text = "MADE BY HARMONY"
+by.TextColor3 = GREEN
+by.Font = Enum.Font.GothamBold
+by.TextSize = 13
+by.Parent = card
+
+local badge = Instance.new("Frame")
+badge.Size = UDim2.fromOffset(150, 48)
+badge.Position = UDim2.new(0.5, -75, 0, 112)
+badge.BackgroundColor3 = GREEN
+badge.BackgroundTransparency = 0.88
+badge.BorderSizePixel = 0
+badge.Parent = card
+Instance.new("UICorner", badge).CornerRadius = UDim.new(1, 0)
+
+local badgeStroke = Instance.new("UIStroke")
+badgeStroke.Color = GREEN
+badgeStroke.Thickness = 1.5
+badgeStroke.Parent = badge
+
+local dot = Instance.new("Frame")
+dot.Size = UDim2.fromOffset(12, 12)
+dot.Position = UDim2.new(0, 28, 0.5, -6)
+dot.BackgroundColor3 = GREEN
+dot.BorderSizePixel = 0
+dot.Parent = badge
+Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -60, 1, 0)
+status.Position = UDim2.fromOffset(52, 0)
+status.BackgroundTransparency = 1
+status.Text = "ON"
+status.TextColor3 = GREEN
+status.Font = Enum.Font.GothamBlack
+status.TextSize = 26
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Parent = badge
+
+TweenService:Create(
+	dot,
+	TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{ BackgroundTransparency = 0.7 }
+):Play()
+
+local counter = Instance.new("TextLabel")
+counter.Size = UDim2.new(1, -24, 0, 24)
+counter.Position = UDim2.fromOffset(12, 184)
+counter.BackgroundTransparency = 1
+counter.Text = "Trades bloqués : 0"
+counter.TextColor3 = Color3.fromRGB(111, 143, 126)
+counter.Font = Enum.Font.GothamBold
+counter.TextSize = 14
+counter.Parent = card
+
+-- Déplacement
+local dragging, dragStart, startPos
+card.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+		dragging, dragStart, startPos = true, input.Position, card.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
 			end
-		end
-
-		print(("[ANTISCAM] Trade %s fermé (item %d)"):format(tostring(tradeId), itemId))
+		end)
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch) then
+		local d = input.Position - dragStart
+		card.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
+			startPos.Y.Scale, startPos.Y.Offset + d.Y)
 	end
 end)
 
-print("[ANTISCAM] TradeHandler ON - made by Harmony")
+----------------------------------------------------------------
+-- BLOCAGE DES TRADES (heuristique : tout ce qui s'appelle "trade")
+----------------------------------------------------------------
+local blocked = 0
+local function onBlocked()
+	blocked += 1
+	counter.Text = "Trades bloqués : " .. blocked
+	counter.TextColor3 = RED
+	stroke.Color = RED
+	task.delay(3, function()
+		counter.TextColor3 = Color3.fromRGB(111, 143, 126)
+		stroke.Color = GREEN
+	end)
+end
+
+local function isTradeName(name)
+	return string.find(string.lower(name), "trade", 1, true) ~= nil
+end
+
+-- 1) Coupe les listeners des RemoteEvents de trade (les demandes n'arrivent plus au jeu)
+local function neutralize(obj)
+	if obj:IsA("RemoteEvent") and isTradeName(obj.Name) then
+		if getconnections then
+			pcall(function()
+				for _, c in ipairs(getconnections(obj.OnClientEvent)) do
+					c:Disable()
+				end
+			end)
+		end
+		obj.OnClientEvent:Connect(onBlocked)
+	end
+end
+
+for _, d in ipairs(ReplicatedStorage:GetDescendants()) do
+	neutralize(d)
+end
+ReplicatedStorage.DescendantAdded:Connect(neutralize)
+
+-- 2) Cache toute fenêtre de trade qui apparaît dans l'interface du jeu
+local function hideTradeGui(obj)
+	if obj:IsDescendantOf(gui) or not isTradeName(obj.Name) then
+		return
+	end
+	if obj:IsA("ScreenGui") then
+		obj.Enabled = false
+		obj:GetPropertyChangedSignal("Enabled"):Connect(function()
+			if obj.Enabled then
+				obj.Enabled = false
+				onBlocked()
+			end
+		end)
+	elseif obj:IsA("GuiObject") then
+		obj.Visible = false
+		obj:GetPropertyChangedSignal("Visible"):Connect(function()
+			if obj.Visible then
+				obj.Visible = false
+				onBlocked()
+			end
+		end)
+	end
+end
+
+for _, d in ipairs(playerGui:GetDescendants()) do
+	hideTradeGui(d)
+end
+playerGui.DescendantAdded:Connect(hideTradeGui)
+
+print("[ANTISCAM] ON - made by Harmony")

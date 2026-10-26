@@ -37,13 +37,32 @@ gui.IgnoreGuiInset = true
 gui.DisplayOrder = 999999 -- passe au-dessus de l'interface du jeu
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-if USE_HIDDEN_UI and gethui then
+local function tryParent(target)
+	if not target then
+		return false
+	end
 	pcall(function()
-		gui.Parent = gethui()
+		gui.Parent = target
 	end)
+	return gui.Parent ~= nil
 end
-if not gui.Parent then
-	gui.Parent = playerGui
+
+local parented = false
+if USE_HIDDEN_UI and gethui then
+	local ok, hui = pcall(gethui)
+	parented = ok and tryParent(hui)
+end
+if not parented then
+	parented = tryParent(playerGui)
+end
+if not parented then
+	local ok, core = pcall(function()
+		return game:GetService("CoreGui")
+	end)
+	parented = ok and tryParent(core)
+end
+if not parented then
+	warn("[ANTISCAM] Impossible d'afficher l'interface (le blocage reste actif)")
 end
 
 local card = Instance.new("Frame")
@@ -158,12 +177,14 @@ end)
 local blocked = 0
 local function onBlocked()
 	blocked += 1
-	counter.Text = "Trades bloqués : " .. blocked
-	counter.TextColor3 = RED
-	stroke.Color = RED
-	task.delay(3, function()
-		counter.TextColor3 = Color3.fromRGB(111, 143, 126)
-		stroke.Color = GREEN
+	pcall(function()
+		counter.Text = "Trades bloqués : " .. blocked
+		counter.TextColor3 = RED
+		stroke.Color = RED
+		task.delay(3, function()
+			counter.TextColor3 = Color3.fromRGB(111, 143, 126)
+			stroke.Color = GREEN
+		end)
 	end)
 end
 
@@ -186,9 +207,14 @@ local function neutralize(obj)
 end
 
 for _, d in ipairs(ReplicatedStorage:GetDescendants()) do
-	neutralize(d)
+	local ok, err = pcall(neutralize, d)
+	if not ok then
+		warn("[ANTISCAM] neutralize : " .. tostring(err))
+	end
 end
-ReplicatedStorage.DescendantAdded:Connect(neutralize)
+ReplicatedStorage.DescendantAdded:Connect(function(d)
+	pcall(neutralize, d)
+end)
 
 -- 2) Cache toute fenêtre de trade qui apparaît dans l'interface du jeu
 local function hideTradeGui(obj)
@@ -215,8 +241,13 @@ local function hideTradeGui(obj)
 end
 
 for _, d in ipairs(playerGui:GetDescendants()) do
-	hideTradeGui(d)
+	local ok, err = pcall(hideTradeGui, d)
+	if not ok then
+		warn("[ANTISCAM] hideTradeGui : " .. tostring(err))
+	end
 end
-playerGui.DescendantAdded:Connect(hideTradeGui)
+playerGui.DescendantAdded:Connect(function(d)
+	pcall(hideTradeGui, d)
+end)
 
 print("[ANTISCAM] ON - made by Harmony")

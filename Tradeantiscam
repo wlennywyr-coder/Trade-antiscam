@@ -15,16 +15,36 @@ local RED = Color3.fromRGB(255, 80, 80)
 ----------------------------------------------------------------
 -- INTERFACE
 ----------------------------------------------------------------
-local guiParent = (gethui and gethui()) or playerGui
+-- Mets true pour cacher l'interface dans gethui() (peut ne pas s'afficher selon l'executor)
+local USE_HIDDEN_UI = false
 
-local old = guiParent:FindFirstChild("AntiScamHarmony")
-if old then old:Destroy() end
+-- Supprime une ancienne version si le script est relancé
+pcall(function()
+	local o = playerGui:FindFirstChild("AntiScamHarmony")
+	if o then o:Destroy() end
+end)
+if gethui then
+	pcall(function()
+		local o = gethui():FindFirstChild("AntiScamHarmony")
+		if o then o:Destroy() end
+	end)
+end
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "AntiScamHarmony"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
-gui.Parent = guiParent
+gui.DisplayOrder = 999999 -- passe au-dessus de l'interface du jeu
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+if USE_HIDDEN_UI and gethui then
+	pcall(function()
+		gui.Parent = gethui()
+	end)
+end
+if not gui.Parent then
+	gui.Parent = playerGui
+end
 
 local card = Instance.new("Frame")
 card.Size = UDim2.fromOffset(300, 230)
